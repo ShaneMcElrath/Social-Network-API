@@ -40,15 +40,16 @@ const userController = {
   // Add friend to User
   addFriend({ params }, res) {
 
-    User.findOne({ _id: params.friendId })
-      .then(async (dbFriendData) => {
-        if (params.friendId == params.userId) {
-          throw {
-            status: 400,
-            message: "User ids are the same. User can not friend themselves",
-          };
-        }
+    if (params.friendId == params.userId) {
+      return res.status(400).json({ Error: "User ids are the same. User can not friend themselves" });
+    }
 
+    User.findOneAndUpdate(
+      { _id: params.friendId },
+      { $addToSet: { friends: params.userId } },
+      { new: true }
+    )
+      .then(async (dbFriendData) => {
         if (!dbFriendData) {
           throw {
             status: 404,
@@ -69,7 +70,7 @@ const userController = {
           };
         }
 
-        res.json(dbUserData);
+        res.json({ dbUserData, dbFriendData });
       })
       .catch((err) => {
         if (err.status) {
@@ -138,7 +139,7 @@ const userController = {
       { $pull: { friends: params.friendId } },
       { new: true }
     )
-      .then(dbUserData => {
+      .then(async dbUserData => {
         if (!dbUserData) {
           throw {
             status: 404,
@@ -146,7 +147,20 @@ const userController = {
           };
         }
 
-        res.json(dbUserData);
+        let dbFriendData = await User.findOneAndUpdate(
+          { _id: params.friendId, friends: params.userId },
+          { $pull: { friends: params.userId } },
+          { new: true }
+        );
+
+        if (!dbFriendData) {
+          throw {
+            status: 404,
+            message: "No user found with this id and friend!",
+          };
+        }
+
+        res.json({ dbUserData, dbFriendData });
       })
       .catch((err) => {
         if (err.status) {
