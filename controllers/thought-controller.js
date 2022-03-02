@@ -136,7 +136,7 @@ const thoughtController = {
           });
         }
         let dbUserData = await User.findOneAndUpdate(
-          { username: 'papa' },
+          { username: dbThoughtData.username },
           { $pull: { thoughts: params.thoughtId } },
           { new: true }
         );
