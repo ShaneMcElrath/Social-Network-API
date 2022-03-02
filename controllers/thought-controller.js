@@ -1,5 +1,4 @@
-const { Thought, User} = require('../models');
-const { findOneAndUpdate } = require('../models/User');
+const { Thought, User } = require('../models');
 
 const thoughtController = {
 
@@ -32,10 +31,8 @@ const thoughtController = {
       });
   },
 
-  async createThought({ params, body }, res) {
-    console.log(body);
-
-      User.findOne({ _id: params.userId })
+  createThought({ params, body }, res) {
+    User.findOne({ _id: params.userId })
       .then(dbUserData => {
 
         return Thought.create({ 
@@ -58,7 +55,41 @@ const thoughtController = {
           });
         }
 
-        res.json(dbUserData)
+        res.json(dbUserData);
+      })
+      .catch(err => {
+        if (err.status) {
+          res.status(err.status).json({ 'Error': err.message });
+          return;
+        }
+  
+        res.status(400).json(err);
+      });
+  },
+
+  createReaction({ params, body }, res) {
+    User.findOne({ _id: params.userId })
+      .then(dbUserData => {
+        return Thought.findOneAndUpdate(
+          { _id: params.thoughtId },
+          { $push: { 
+            reactions: {
+              reactionBody: body.reactionBody,
+              username: dbUserData.username
+            } 
+          }},
+          { new: true, runValidators: true }
+        );
+      })
+      .then(dbThoughtData => {
+        if (!dbThoughtData) {
+          throw ({
+            status: 404,
+            message: 'No Thought found with this id!'
+          });
+        }
+
+        res.json(dbThoughtData);
       })
       .catch(err => {
         if (err.status) {
@@ -110,6 +141,32 @@ const thoughtController = {
           { new: true }
         );
         res.json({dbThoughtData, dbUserData});
+      })
+      .catch(err => {
+        if (err.status) {
+          res.status(err.status).json({ 'Error': err.message });
+          return;
+        }
+
+        res.status(400).json(err);
+      });
+  },
+
+  deleteReaction({ params }, res) {
+    Thought.findOneAndUpdate(
+      { _id: params.thoughtId },
+      { $pull: { reactions: { reactionId: params.reactionId } } },
+      { new: true }
+    )
+      .then(dbThoughtData => {
+        if (!dbThoughtData) {
+          throw ({
+            status: 404,
+            message: 'No Thought found with this id!'
+          });
+        }
+
+        res.json(dbThoughtData);
       })
       .catch(err => {
         if (err.status) {
